@@ -3,8 +3,8 @@ package message
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,10 +15,8 @@ var update = flag.Bool("update", false, "update .golden files")
 
 func resetDicts(t *testing.T) {
 	t.Helper()
-	routesCodesMutex.Lock()
-	defer routesCodesMutex.Unlock()
-	routes = make(map[string]uint16)
-	codes = make(map[uint16]string)
+	routes = sync.Map{}
+	codes = sync.Map{}
 }
 
 func TestNew(t *testing.T) {
@@ -205,7 +203,4 @@ func TestGetDictionary(t *testing.T) {
 
 	dict := GetDictionary()
 	assert.Equal(t, expected, dict)
-
-	// make sure we're copying the routes maps
-	assert.NotEqual(t, fmt.Sprintf("%p", routes), fmt.Sprintf("%p", dict))
 }

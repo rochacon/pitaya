@@ -55,9 +55,8 @@ var types = map[Type]string{
 }
 
 var (
-	routesCodesMutex = sync.RWMutex{}
-	routes           = make(map[string]uint16) // route map to code
-	codes            = make(map[uint16]string) // code map to route
+	routes = sync.Map{} // route map to code
+	codes  = sync.Map{} // code map to route
 )
 
 // Errors that could be occurred in message codec
@@ -112,24 +111,22 @@ func SetDictionary(dict map[string]uint16) error {
 	if dict == nil {
 		return nil
 	}
-	routesCodesMutex.Lock()
-	defer routesCodesMutex.Unlock()
 
 	for route, code := range dict {
 		r := strings.TrimSpace(route)
 
 		// duplication check
-		if _, ok := routes[r]; ok {
+		if _, ok := routes.Load(r); ok {
 			return fmt.Errorf("duplicated route(route: %s, code: %d)", r, code)
 		}
 
-		if _, ok := codes[code]; ok {
+		if _, ok := codes.Load(code); ok {
 			return fmt.Errorf("duplicated route(route: %s, code: %d)", r, code)
 		}
 
 		// update map, using last value when key duplicated
-		routes[r] = code
-		codes[code] = r
+		routes.Store(r, code)
+		codes.Store(code, r)
 	}
 
 	return nil
@@ -137,12 +134,11 @@ func SetDictionary(dict map[string]uint16) error {
 
 // GetDictionary gets the routes map which is used to compress route.
 func GetDictionary() map[string]uint16 {
-	routesCodesMutex.RLock()
-	defer routesCodesMutex.RUnlock()
 	dict := make(map[string]uint16)
-	for k, v := range routes {
-		dict[k] = v
-	}
+	routes.Range(func(k, v interface{}) bool {
+		dict[k.(string)] = v.(uint16)
+		return true
+	})
 	return dict
 }
 
